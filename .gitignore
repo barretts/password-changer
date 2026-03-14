@@ -1,0 +1,14 @@
+.cursor/
+passwords.db
+passwords.db-shm
+passwords.db-wal
+*.csv
+tasks.txt
+logs/
+.logs/
+.last_log_dir
+.resume_tasks.txt
+.active_tasks.txt
+*.log
+/tmp/
+.DS_Store
