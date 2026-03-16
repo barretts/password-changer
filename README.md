@@ -4,6 +4,11 @@ Automated password rotation pipeline for bulk credential updates from a LastPass
 
 > **Security:** This pipeline processes real credentials. Run it only on your local machine. Keep vault exports and `passwords.db` out of version control and never share them. The `.gitignore` excludes sensitive files by default.
 
+## Security Notes
+
+- Why this approach was acceptable for this constrained use case: [`RATIONAL.md`](./RATIONAL.md)
+- How to harden this pipeline while preserving product value: [`SECURITY-HARDENING.md`](./SECURITY-HARDENING.md)
+
 ## How It Works
 
 ```
