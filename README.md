@@ -2,6 +2,8 @@
 
 Automated password rotation pipeline for bulk credential updates from a LastPass vault export. Uses LLM-powered browser agents to navigate websites, log in, find password change forms, and set new passwords — all without human intervention.
 
+> **Security:** This pipeline processes real credentials. Run it only on your local machine. Keep vault exports and `passwords.db` out of version control and never share them. The `.gitignore` excludes sensitive files by default.
+
 ## How It Works
 
 ```
@@ -76,7 +78,7 @@ This reduced the "blocked by bot detection" rate from ~60% (Playwright) to ~15% 
 When the agent encounters a visual CAPTCHA (reCAPTCHA image grid, hCaptcha, text CAPTCHA), it doesn't give up. Instead:
 
 1. Takes a screenshot of the page via CamoFox REST API (`captcha-screenshot.sh`)
-2. Sends the image to a local vision LLM ([Qwen 2.5 VL](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct)) running on [LM Studio](https://lmstudio.ai/) at `http://192.168.1.129:1234`
+2. Sends the image to a local vision LLM ([Qwen 2.5 VL](https://huggingface.co/Qwen/Qwen2.5-VL-7B-Instruct)) running on [LM Studio](https://lmstudio.ai/) (default: `http://127.0.0.1:1234`, override with `VISION_LLM_URL`)
 3. The vision model analyzes the CAPTCHA and returns a JSON response (which grid cells to click, what text to type, etc.)
 4. The agent acts on the response — clicking tiles, typing text, submitting
 
@@ -91,7 +93,7 @@ This runs entirely locally with no external CAPTCHA-solving service. The vision 
 - **Cursor IDE** with `agent` CLI — the LLM orchestrator
 - **Python 3.10+** — for database scripts
 - **SQLite 3** — ships with macOS/Python
-- **LM Studio** (optional) — for local CAPTCHA solving with a vision model
+- **LM Studio** (optional) — for local CAPTCHA solving with a vision model. Set `VISION_LLM_URL` (default: `http://127.0.0.1:1234/v1/chat/completions`) and optionally `VISION_LLM_MODEL` if running on another host or using a different model.
 
 ### 1. Start CamoFox Browser
 
@@ -120,7 +122,7 @@ Add to `~/.cursor/mcp.json`:
 ### 3. Initialize Database
 
 ```bash
-pip install tldextract
+pip install -r requirements.txt
 python3 init-db.py lastpass_vault_export.csv
 python3 apply-skip-list.py
 ```

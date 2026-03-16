@@ -3,13 +3,14 @@
 
 import base64
 import json
+import os
 import sys
 from pathlib import Path
 
 import urllib.request
 
-VISION_LLM_URL = "http://192.168.1.129:1234/v1/chat/completions"
-VISION_LLM_MODEL = "qwen/qwen3-vl-8b"
+VISION_LLM_URL = os.environ.get("VISION_LLM_URL", "http://127.0.0.1:1234/v1/chat/completions")
+VISION_LLM_MODEL = os.environ.get("VISION_LLM_MODEL", "qwen/qwen3-vl-8b")
 
 
 def encode_image(image_path: str) -> str:
