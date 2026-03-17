@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CONCURRENCY="${1:-2}"
-WORKSPACE="/Users/ephem/lcode/password-changer"
+WORKSPACE="$(cd "$(dirname "$0")" && pwd)"
 DB_PATH="$WORKSPACE/passwords.db"
 TASK_FILE="$WORKSPACE/tasks.txt"
 TEMPLATE="$WORKSPACE/prompt-template.md"

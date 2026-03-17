@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-WORKSPACE="/Users/ephem/lcode/password-changer"
+WORKSPACE="$(cd "$(dirname "$0")" && pwd)"
 DB_PATH="$WORKSPACE/passwords.db"
 
 sq() {
