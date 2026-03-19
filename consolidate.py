@@ -7,6 +7,39 @@ from pathlib import Path
 
 WORKSPACE = Path(__file__).parent
 DB_PATH = WORKSPACE / "passwords.db"
+LP_CSV_PATH = WORKSPACE / "lastpass_vault_export.csv"
+
+
+def _combine_notes(agent_notes: str | None, extra: str | None, pw_reqs: str | None) -> str:
+    """Merge agent observations, original LastPass notes, and password requirements."""
+    parts = []
+    if agent_notes and agent_notes.strip():
+        parts.append(agent_notes.strip())
+    if pw_reqs and pw_reqs.strip():
+        parts.append(f"Password requirements: {pw_reqs.strip()}")
+    if extra and extra.strip():
+        parts.append(f"LastPass note:\n{extra.strip()}")
+    return "\n\n".join(parts)
+
+
+def _load_lastpass_secure_notes() -> list[dict]:
+    """Read Secure Notes (url == 'http://sn') from the LastPass vault export."""
+    if not LP_CSV_PATH.exists():
+        return []
+    notes = []
+    with LP_CSV_PATH.open(newline="", encoding="utf-8", errors="replace") as f:
+        for row in csv.DictReader(f):
+            if (row.get("url") or "").strip() != "http://sn":
+                continue
+            extra = (row.get("extra") or "").strip()
+            if not extra:
+                continue
+            notes.append({
+                "name": (row.get("name") or "").strip(),
+                "folder": (row.get("grouping") or "").strip(),
+                "notes": extra,
+            })
+    return notes
 
 
 def main():
@@ -101,6 +134,78 @@ def main():
         for row in manual:
             writer.writerow(list(row))
     print(f"Manual queue: {len(manual)} entries -> {manual_path}")
+
+    # Bitwarden-format import CSV (successful changes + LastPass Secure Notes)
+    bw_rows = conn.execute(
+        "SELECT url, domain, username, new_password, totp, grouping_label, agent_notes, extra, password_requirements"
+        " FROM entries WHERE status = 'success' ORDER BY domain"
+    ).fetchall()
+
+    secure_notes = _load_lastpass_secure_notes()
+
+    bw_path = WORKSPACE / "export-bitwarden.csv"
+    bw_fields = ["folder", "favorite", "type", "name", "notes", "fields", "reprompt",
+                 "login_uri", "login_username", "login_password", "login_totp"]
+    with open(bw_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=bw_fields)
+        writer.writeheader()
+        for row in bw_rows:
+            notes = _combine_notes(row["agent_notes"], row["extra"], row["password_requirements"])
+            writer.writerow({
+                "folder": row["grouping_label"] or "",
+                "favorite": "",
+                "type": "login",
+                "name": row["domain"] or "",
+                "notes": notes,
+                "fields": "",
+                "reprompt": 0,
+                "login_uri": row["url"] or "",
+                "login_username": row["username"] or "",
+                "login_password": row["new_password"] or "",
+                "login_totp": row["totp"] or "",
+            })
+        for sn in secure_notes:
+            writer.writerow({
+                "folder": sn["folder"],
+                "favorite": "",
+                "type": "note",
+                "name": sn["name"],
+                "notes": sn["notes"],
+                "fields": "",
+                "reprompt": 0,
+                "login_uri": "",
+                "login_username": "",
+                "login_password": "",
+                "login_totp": "",
+            })
+    print(f"Bitwarden export: {len(bw_rows)} logins + {len(secure_notes)} secure notes -> {bw_path}")
+
+    # 1Password-format import CSV (successful changes + LastPass Secure Notes)
+    op_path = WORKSPACE / "export-1password.csv"
+    op_fields = ["Title", "URL", "Username", "Password", "Notes", "Tags"]
+    with open(op_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=op_fields)
+        writer.writeheader()
+        for row in bw_rows:
+            notes = _combine_notes(row["agent_notes"], row["extra"], row["password_requirements"])
+            writer.writerow({
+                "Title": row["domain"] or "",
+                "URL": row["url"] or "",
+                "Username": row["username"] or "",
+                "Password": row["new_password"] or "",
+                "Notes": notes,
+                "Tags": row["grouping_label"] or "",
+            })
+        for sn in secure_notes:
+            writer.writerow({
+                "Title": sn["name"],
+                "URL": "",
+                "Username": "",
+                "Password": "",
+                "Notes": sn["notes"],
+                "Tags": sn["folder"],
+            })
+    print(f"1Password export: {len(bw_rows)} logins + {len(secure_notes)} secure notes -> {op_path}")
 
     conn.close()
 
